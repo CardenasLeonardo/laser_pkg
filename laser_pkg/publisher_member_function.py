@@ -9,6 +9,7 @@ class MinimalPublisher(Node):
     def __init__(self):
         super().__init__('minimal_publisher')
 
+    def movimiento(self):
         self.publisher_ = self.create_publisher(Twist, 'cmd_vel', 10)
         vel = Twist()
         vel.linear.x = 0.0
@@ -94,7 +95,7 @@ class MinimalPublisher(Node):
         vel.angular.z = 0.0
         vel.linear.x = 0.0
         self.publish_twist(vel)
-        time.sleep(2)
+        time.sleep(2)   
 
 
     def publish_twist(self, vel):
@@ -105,7 +106,7 @@ def main(args=None):
     rclpy.init(args=args)
 
     minimal_publisher = MinimalPublisher()
-
+    minimal_publisher.movimiento()
     rclpy.spin(minimal_publisher)
 
     # Destruir el nodo explícitamente

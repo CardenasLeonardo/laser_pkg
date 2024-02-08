@@ -1,0 +1,77 @@
+import rclpy
+from rclpy.node import Node
+from geometry_msgs.msg import Twist
+from sensor_msgs.msg import LaserScan
+
+class MoveRobotNode(Node):
+
+    def __init__(self):
+        super().__init__('move_robot_node')
+
+        self.publisher = self.create_publisher(Twist, '/cmd_vel', 10)
+        self.subscription = self.create_subscription(LaserScan, '/scan', self.scan_callback,10)
+
+        self.linear_velocity = 1.0
+        self.angular_velocity = 0.0
+        self.timer = self.create_timer(1.0, self.move_robot)
+        
+
+    def stop_robot(self):
+
+        msg = Twist()
+        msg.linear.x  = 0.0
+        msg.angular.z = 0.0
+
+        self.publisher.publish(msg)
+        self.get_logger().info('Deteniendo el robot')
+                
+    def scan_callback(self, msg):
+
+        ranges = msg.ranges
+
+        obstacle_threshold = 2.0
+        
+        obstacle_right = any(r < obstacle_threshold for r in ranges[90:135])
+        obstacle_center = any(r < obstacle_threshold for r in ranges[135:225])
+        obstacle_left = any(r < obstacle_threshold for r in ranges[225:270])
+
+        self.linear_velocity = 0.7
+        self.angular_velocity = 0.0
+        if obstacle_left:
+            self.linear_velocity = 0.01
+            self.angular_velocity = -0.2#0.2
+            self.get_logger().info('Izq: %f - angl vel: %f' %(self.linear_velocity, self.angular_velocity))
+        elif obstacle_right:
+            self.linear_velocity = 0.01
+            self.angular_velocity = 0.2#-0.2
+            self.get_logger().info('Der: %f - angl vel: %f' %(self.linear_velocity, self.angular_velocity))
+        elif obstacle_center:
+            self.angular_velocity = 0.2
+            self.linear_velocity = 0.0
+            self.get_logger().info('Fren: %f - angl vel: %f' %(self.linear_velocity, self.angular_velocity))
+                        
+    def move_robot(self):
+
+        msg = Twist()
+        msg.linear.x  = self.linear_velocity
+        msg.angular.z = self.angular_velocity
+        self.publisher.publish(msg)
+        self.get_logger().info('Moviendo el robot:: veloc linear: %f velc ang: %f' % (self.linear_velocity, self.angular_velocity))
+
+def main(args=None):
+
+    rclpy.init(args=args)
+
+    node = MoveRobotNode()
+
+    try:
+        rclpy.spin(node)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        node.stop_robot()
+        node.destroy_node()
+        rclpy.shutdown()
+
+if __name__ == '__main__':
+    main()

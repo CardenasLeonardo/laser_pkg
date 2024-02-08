@@ -1,0 +1,97 @@
+#--------------------------------------LIBRERIAS (ANEXAR LASER)------------------------------------------------------
+#import math
+#import time
+#from math import pow, atan2, sqrt, asin, cos, sin
+#from math import radians, degrees
+#from nav_msgs.msg import Odometry
+from rclpy.node import Node
+import rclpy
+#import os
+#from odometria.euler_from_quaternion import *
+from geometry_msgs.msg import Twist, Pose, Quaternion
+from sensor_msgs.msg import LaserScan
+#from geometry_msgs.msg import Pose2D
+#from rclpy.executors import MultiThreadedExecutor
+
+
+
+class MoveRobotNode(Node):
+    
+    #--------------------------------------- SETUP ---------------------------------------------------------#
+    def __init__(self):
+        #--------------------------SE INICIALIZA EL NODO Y SE IMPRIME UN MENSAJE -------------------------------#
+        super().__init__('move_robot_node')
+        self.get_logger().info("Node move_robot_node Started")
+
+        #------------------------------- GENERAR PUBLISHERS Y SUBSCRIBERS --------------------------------------#
+        #Se crea un publisher que publica en el topic /cmd_vel mensajes del tipo Twist
+        self.cmd_vel_pub = self.create_publisher(Twist,'/cmd_vel',10)
+
+        #Se crea un subscriber en el topic /laser de mensajes tipo LaserScan
+        #El argumento self.laserscan_callback es la funcion que se llamara cada que se reciba un msg
+        self.laser_subs= self.create_subscription(LaserScan,'/scan',self.laserscan_callback,10)
+
+        #--------------------------------- Set velocidades en 0 ------------------------------------------------#
+        self.linear_velocity = 0.0
+        self.angular_velocity = 0.0
+
+    #--------------------------------------- END SETUP --------------------------------------------------
+
+
+
+
+    #----------------------------- FUNCION LLAMADA CADA QUE SE RECIBE MSG EN LASER --------------------------------------------------
+    def listener_callback(self,msg):
+        # -------------- EL MSG de LaserScan se almacena en self.lidar_data ---------------------
+        self.lidar_data = msg
+        #------------- Se imprimen los valores de sel.lidar_data (contiene el msg)------
+        self.get_logger().info('angle_min: "%f" ' %(self.lidar_data.angle_min))
+        self.get_logger().info('angle_max: "%f" ' %(self.lidar_data.angle_max))
+        self.get_logger().info('angle_increment: "%f" ' %(self.lidar_data.angle_increment))
+        self.get_logger().info('time_increment: "%f" ' %(self.lidar_data.time_increment))
+        self.get_logger().info('scan_time: "%f" ' %(self.lidar_data.scan_time))
+        self.get_logger().info('range_min: "%f" ' %(self.lidar_data.range_min))
+        self.get_logger().info('range_max: "%f" ' %(self.lidar_data.range_max))
+        self.get_logger().info('numero ranges: "%f" ' %((len(self.lidar_data.ranges))))
+        if len(self.lidar_data.ranges) > 0:
+            # Utilizar un bucle para mostrar cada valor en la cadena de log
+            log_string = 'ranges: '
+            for value in self.lidar_data.ranges:
+                log_string += '"%f" ' % value
+            # Imprimir la cadena de log
+            self.get_logger().info(log_string)
+        else:
+            self.get_logger().info('El vector "ranges" está vacío.')
+
+
+    def stop_robot(self):
+
+        print("STOPING ROBOT")
+        msg = Twist()
+        msg.linear.x = 0.0
+        msg.angular.z = 0.0
+        #publicar a velocidades
+        self.cmd_vel_pub.publish(msg)
+        print("ROBOT DETENIDO")
+
+    def avance_robot(self):
+
+        print("STARTING ROBOT")
+        msg = Twist()
+        msg.linear.x = 0.0
+        msg.angular.z = 0.0
+        #publicar a velocidades
+        self.cmd_vel_pub.publish(msg)
+        print("ROBOT AVANZANDO")
+
+
+
+
+def main(args=None):
+    rclpy.init()
+    MRN = MoveRobotNode()               
+    rclpy.spin(MRN)
+    rclpy.shutdown()
+
+if __name__ == '__main__':
+    main()

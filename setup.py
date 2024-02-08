@@ -22,6 +22,9 @@ setup(
         'console_scripts': [
             'talker = laser_pkg.publisher_member_function:main',
             'listener = laser_pkg.subscriber_member_function:main',
+            'fusion = laser_pkg.fusion:main',
+            'fusion2 = laser_pkg.fusion2:main',
+            'luis = laser_pkg.luis:main',
         ],
     },
 )
