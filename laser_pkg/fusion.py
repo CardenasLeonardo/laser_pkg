@@ -34,8 +34,8 @@ class MoveRobotNode(Node):
         # -------------- EL MSG de LaserScan se almacena en self.lidar_data ---------------------
         self.lidar_data = msg
         rango = msg.ranges
-        umbral = 0.33
-        minm = min(rango)
+        umbral = 0.45
+        minm = min(rango[60:200])
         min_index = rango.index(minm)
 
         err = (min (rango[70:110])) - umbral #error d
@@ -53,7 +53,7 @@ class MoveRobotNode(Node):
         
 
 
-        self.mover(1.0 , erra - err*3)
+        self.mover(0.5 , erra - err*6)
       
             
             
