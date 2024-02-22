@@ -5,8 +5,7 @@ import rclpy
 from geometry_msgs.msg import Twist
 from sensor_msgs.msg import LaserScan
 import time
-
-
+from nav_msgs.msg import Odometry
 
 
 class MoveRobotNode(Node):
@@ -24,24 +23,23 @@ class MoveRobotNode(Node):
         #Se crea un subscriber en el topic /laser de mensajes tipo LaserScan
         #El argumento self.laserscan_callback es la funcion que se llamara cada que se reciba un msg
         self.laser_subs= self.create_subscription(LaserScan,'/scan',self.laserscan_callback,10)
+        #Se crea un subscriber en el topic /odom de mensajes tipo Odometry
+        self.odom_subs= self.create_subscription(Odometry,'/odom',self.odom_callback,10)
     #--------------------------------------- END SETUP --------------------------------------------------
 
 
 
 
-    #----------------------------- FUNCION LLAMADA CADA QUE SE RECIBE MSG EN LASER --------------------------------------------------
+    #----------------------------- FUNCION LLAMADA CADA QUE SE RECIBE MSG EN LASER ---------------------------------------
     def laserscan_callback(self,msg):
         # -------------- EL MSG de LaserScan se almacena en self.lidar_data ---------------------
         self.lidar_data = msg
         rango = msg.ranges
-        umbral = 0.4
-        minm = min(rango[0:140])
+        umbral = 0.45
+        minm = min(rango[60:200])
         min_index = rango.index(minm)
-        rango1 = min (rango[0:110])
-        rango2 = min (rango[340:359])
-
-        err = min(rango2,rango1) - umbral #error d
-        erra = (min_index -90.0)/10
+        err = (min (rango[70:110])) - umbral #error d
+        erra = (min_index - 90.0)/10
      
         if err>1:
             err=1.0
@@ -52,14 +50,20 @@ class MoveRobotNode(Node):
         print(self.obstaculo(rango,umbral))
         print('error',err)
         print('error a',erra)
-        print('min rango',rango2)
+        self.mover(0.4 , erra - err*6)
+        
+        
+    #----------------------------- FUNCION LLAMADA CADA QUE SE RECIBE MSG EN ODOM ---------------------------------------
+    def odom_callback(self, msg_odom):
+        position = msg_odom.pose.pose.position
+        orientation = msg_odom.pose.pose.orientation
+        (posx, posy, posz) = (position.x, position.y, position.z)
+        (qx, qy, qz, qw) = (orientation.x, orientation.y, orientation.z, orientation.w)
+        print('x:',posx,'y:',posy,'z',posz)
+        
         
 
 
-        self.mover(-0.4, erra +err*6 )
-        #self.mover(-0.0, erra )
-        #self.mover(-0.0, 0.0 )
-      
             
             
        
