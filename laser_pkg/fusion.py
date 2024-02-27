@@ -43,7 +43,6 @@ class MoveRobotNode(Node):
         self.pose.x = 0.0
         self.pose.y = 0.0
         self.theta = 0.0
-
         self.goal_pose = Pose2D()
         self.goal_pose.x = 0.0
         self.goal_pose.y = 0.0
@@ -70,12 +69,44 @@ class MoveRobotNode(Node):
         
         self.lidar_data = msg
         rango = msg.ranges
-        umbral = 0.45
-        minm = min(rango[60:200])
-        min_index = rango.index(minm)
-        err = (min (rango[70:110])) - umbral #error d
-        erra = (min_index - 90.0)/10
-     
+        umbral = 2.0
+        mode = 1
+
+        if mode == 0:
+            self.mover(0.0 , 0.0)
+            print('mode: ',mode)
+        
+        if mode == 1:
+            #rango por derecha y frente 90 - 180
+            a = 60
+            b = 200
+            #rango por derecha 90
+            c = 70
+            d = 110
+            #Posicion de lado
+            e = 90
+            f = 1.0
+            g = -1.0
+
+        if mode == 2:
+            #rango por derecha y frente 240 - 160
+            a = 160
+            b = 290
+            #rango por izquierda 270
+            c = 250
+            d = 290
+            #Posicion de lado
+            e = 270
+            f = 1.0
+            g = 1.0
+        
+
+
+        minm = min(rango[a:b]) #Rango de monitoreo por derecha y frente
+        min_index = rango.index(minm)  #Angulo de la menor medicion
+        err = (min (rango[c:d])) - umbral #error d   Rango de monitoreo por la derecha
+        erra = (min_index - e)/10 #  /10  es una constante
+    
         if err>1:
             err=1.0
 
@@ -84,7 +115,10 @@ class MoveRobotNode(Node):
 
         print('error',err)
         print('error a',erra)
-        self.mover(0.4 , erra - err*6)
+        print('mode: ',mode)
+        self.mover(0.4 , erra*f + err*6*g)
+
+
         
 
 
@@ -103,7 +137,7 @@ class MoveRobotNode(Node):
         if self.custom_origin is not None:
             (x_origin, y_origin, z_origin) = self.custom_origin
             (posx_custom, posy_custom, posz_custom) = (posx - x_origin, posy - y_origin, posz - z_origin)
-            print('x:', posx_custom, 'y:', posy_custom, 'z:', posz_custom)
+            #print('x:', posx_custom, 'y:', posy_custom, 'z:', posz_custom)
 
 
 
