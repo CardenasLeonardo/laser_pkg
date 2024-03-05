@@ -162,21 +162,7 @@ class MoveRobotNode(Node):
         print('vel linear: %f vel ang: %f' % (pot_l, pot_a))
 
 
-    #-------------------------------------------- FUNCION PARA ERROR a ----------------------------------------------#
-    def euclidean_distance(self, goal_pose):
-        return sqrt(pow((goal_pose.x - self.pose.x),2)+pow((goal_pose.y-self.pose.y),2))
-    
-
-
-    #------------------------------------------- FUNCION PARA ERROR alpha -------------------------------------------#
-    def alpha(self, goal_pose):
-
-        alph = atan2(
-            (goal_pose.y - self.pose.y),
-            (goal_pose.x-self.pose.x)
-        ) - 2*self.theta
-        
-        return alph
+   
     
 
     #------------------------------------------- FUNCION PARA DETENER ROBOT ------------------------------------------#
