@@ -40,8 +40,8 @@ class MoveRobotNode(Node):
         self.initialized = False
         
 
-        self.k1 = 0.5
-        self.k2 = 1
+        self.k1 = 0.3
+        self.k2 = 0.2
 
         self.pose = Pose2D()
         self.pose.x = 0.0
@@ -115,9 +115,9 @@ class MoveRobotNode(Node):
           
            
             #-------------------------- Ley de control -------------------------------
-            #v = self.k1 * a * cos(alpha)
-            #w = self.k2 * alpha + self.k1 * sin(alpha) * cos(alpha)
-            #self.mover(v ,w)
+            v = self.k1 * a * cos(alpha)
+            w = self.k2 * alpha + self.k1 * sin(alpha) * cos(alpha)
+            self.mover(v ,w)
             #print('tetha:', theta, ' / ',theta*180/math.pi)
 
     
