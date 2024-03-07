@@ -10,6 +10,10 @@ from sensor_msgs.msg import LaserScan
 from nav_msgs.msg import Odometry
 
 
+#--------------------
+
+
+
 class MoveRobotNode(Node):
     
     #---------------------------------------------- SETUP ---------------------------------------------------------#
@@ -36,16 +40,16 @@ class MoveRobotNode(Node):
         self.initialized = False
         
 
-        self.k1 = 0.2
-        self.k2 = 0.1
+        self.k1 = 0.5
+        self.k2 = 1
 
         self.pose = Pose2D()
         self.pose.x = 0.0
         self.pose.y = 0.0
         self.theta = 0.0
         self.goal_pose = Pose2D()
-        self.goal_pose.x = 5.0
-        self.goal_pose.y = 5.0
+        self.goal_pose.x = 3.0
+        self.goal_pose.y = 3.0
         
         self.start_path = False
         
@@ -86,7 +90,15 @@ class MoveRobotNode(Node):
         if self.custom_origin is not None:
             (x_origin, y_origin, z_origin) = self.custom_origin
             (posx_custom, posy_custom, posz_custom) = (posx - x_origin, posy - y_origin, posz - z_origin)
-                       
+
+            #------------------------- tetha quaternion ------------------------------
+            
+            (x,y,z,w) = (orientation.x, orientation.y, orientation.z, orientation.w)
+          
+            t3 = +2.0 * (w*z+x*y)
+            t4 = +1.0 - 2.0 * (y*y+z*z)
+            theta = math.atan2(t3,t4)
+
             #----------------------------- Error a -----------------------------------
             xr = self.goal_pose.x
             yr = self.goal_pose.y
@@ -97,16 +109,16 @@ class MoveRobotNode(Node):
 
 
             #---------------------------- Error alpha --------------------------------
-            teta = self.theta
-            alpha = atan(ye-xe) - teta 
             
-            print('goal pose: (',self.goal_pose.x ,' , ', self.goal_pose.y,')   robo pose: (',round(posx_custom,2),',', round(posy_custom,2),')', '     a: ',a,'    alpha:',alpha)
-           
+            alpha = atan2(ye,xe) - theta 
+            print('goal pose: (',self.goal_pose.x ,' , ', self.goal_pose.y,')   robo pose: (',round(posx_custom,2),',', round(posy_custom,2),' / ',theta,theta*180/math.pi,')')
+          
            
             #-------------------------- Ley de control -------------------------------
-            v = self.k1 * a * cos(alpha)
-            w = self.k2 * alpha + self.k1 * sin(alpha) * cos(alpha)
-            self.mover(v ,w)
+            #v = self.k1 * a * cos(alpha)
+            #w = self.k2 * alpha + self.k1 * sin(alpha) * cos(alpha)
+            #self.mover(v ,w)
+            #print('tetha:', theta, ' / ',theta*180/math.pi)
 
     
     #----------------------------------------- FUNCION PARA MOVER EL ROBOT -----------------------------------------#
@@ -139,4 +151,4 @@ def main(args=None):
     rclpy.shutdown()
 if __name__ == '__main__':
     main()
-#-----------------------------#
+#-----------------------------
