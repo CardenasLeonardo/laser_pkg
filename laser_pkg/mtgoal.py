@@ -8,6 +8,7 @@ import rclpy
 from geometry_msgs.msg import Twist, Pose, Quaternion, Pose2D
 from sensor_msgs.msg import LaserScan
 from nav_msgs.msg import Odometry
+from std_msgs.msg import Float32
 
 
 #--------------------
@@ -22,12 +23,13 @@ class MoveRobotNode(Node):
         #-----------------------SE INICIALIZA EL NODO Y SE IMPRIME UN MENSAJE -------------------------#
         super().__init__('move_robot_node')
         self.get_logger().info("Node move_robot_node Started")
-
+        
         #----------------------------- GENERAR PUBLISHERS Y SUBSCRIBERS -------------------------------#
         
         self.cmd_vel_pub = self.create_publisher(Twist,'/cmd_vel',10)
         self.laser_subs= self.create_subscription(LaserScan,'/scan',self.laserscan_callback,10)
         self.odom_subs= self.create_subscription(Odometry,'/odom',self.odom_callback,10)
+        self.publisher_ = self.create_publisher(Float32, 'topic', 10)
 
         self.stop_robot()
         print('Coloca el robot en tu origen deseado')
@@ -112,13 +114,22 @@ class MoveRobotNode(Node):
             
             alpha = atan2(ye,xe) - theta 
             print('goal pose: (',self.goal_pose.x ,' , ', self.goal_pose.y,')   robo pose: (',round(posx_custom,2),',', round(posy_custom,2),' / ',theta,theta*180/math.pi,')')
-          
            
             #-------------------------- Ley de control -------------------------------
             v = self.k1 * a * cos(alpha)
             w = self.k2 * alpha + self.k1 * sin(alpha) * cos(alpha)
             self.mover(v ,w)
             #print('tetha:', theta, ' / ',theta*180/math.pi)
+
+            #------------------------- comunicacion con nodo maestro ---------------
+            self.timer_callback(a)
+
+    def timer_callback(self,a):
+        msg = Float32()
+        msg.data = a
+        self.publisher_.publish(msg)
+        self.get_logger().info('Publishing: "%f"' % msg.data)
+        
 
     
     #----------------------------------------- FUNCION PARA MOVER EL ROBOT -----------------------------------------#
