@@ -8,7 +8,7 @@ import rclpy
 from geometry_msgs.msg import Twist, Pose, Quaternion, Pose2D
 from sensor_msgs.msg import LaserScan
 from nav_msgs.msg import Odometry
-from std_msgs.msg import Float32
+from std_msgs.msg import Float32, Int8
 
 
 #--------------------
@@ -29,7 +29,8 @@ class MoveRobotNode(Node):
         self.cmd_vel_pub = self.create_publisher(Twist,'/cmd_vel',10)
         self.laser_subs= self.create_subscription(LaserScan,'/scan',self.laserscan_callback,10)
         self.odom_subs= self.create_subscription(Odometry,'/odom',self.odom_callback,10)
-        self.publisher_ = self.create_publisher(Float32, 'topic', 10)
+        self.publisher_ = self.create_publisher(Float32, 'topic_mtgoal', 10)
+        self.subscriptionmode = self.create_subscription(Int8,'topic_mode_m2g',self.mode_callback,10)
 
         self.stop_robot()
         print('Coloca el robot en tu origen deseado')
@@ -73,8 +74,16 @@ class MoveRobotNode(Node):
     #----------------------------- FUNCION LLAMADA CADA QUE SE RECIBE MSG EN LASER --------------------------------#
     def laserscan_callback(self,msg):
         print('')
- 
+    
+    #------------------------------------ modo ordenado por master ------------------------------------
+    def mode_callback(self, msg):
+        self.get_logger().info('I heard: "%i"' % msg.data)
+        x = msg.data
 
+        if x == 0 : 
+            self.mover(0.0 ,0.0)
+            x == 2
+        if x == 1 : self.mover(v ,w)
 
 
         
@@ -90,6 +99,9 @@ class MoveRobotNode(Node):
             self.initialized = True
 
         if self.custom_origin is not None:
+            global v
+            global w
+
             (x_origin, y_origin, z_origin) = self.custom_origin
             (posx_custom, posy_custom, posz_custom) = (posx - x_origin, posy - y_origin, posz - z_origin)
 
@@ -116,13 +128,15 @@ class MoveRobotNode(Node):
             print('goal pose: (',self.goal_pose.x ,' , ', self.goal_pose.y,')   robo pose: (',round(posx_custom,2),',', round(posy_custom,2),' / ',theta,theta*180/math.pi,')')
            
             #-------------------------- Ley de control -------------------------------
+        
             v = self.k1 * a * cos(alpha)
             w = self.k2 * alpha + self.k1 * sin(alpha) * cos(alpha)
-            self.mover(v ,w)
+            
             #print('tetha:', theta, ' / ',theta*180/math.pi)
 
             #------------------------- comunicacion con nodo maestro ---------------
             self.timer_callback(a)
+            
 
     def timer_callback(self,a):
         msg = Float32()
