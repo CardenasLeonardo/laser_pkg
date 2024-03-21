@@ -1,0 +1,38 @@
+{
+    "python.autoComplete.extraPaths": [
+        "/home/leonardo/dev_ws/build/py_pubsub",
+        "/home/leonardo/dev_ws/install/py_pubsub/lib/python3.10/site-packages",
+        "/home/leonardo/dev_ws/build/my_nav",
+        "/home/leonardo/dev_ws/install/my_nav/lib/python3.10/site-packages",
+        "/home/leonardo/dev_ws/build/m2g",
+        "/home/leonardo/dev_ws/install/m2g/lib/python3.10/site-packages",
+        "/home/leonardo/dev_ws/build/lidar_info_pck",
+        "/home/leonardo/dev_ws/install/lidar_info_pck/lib/python3.10/site-packages",
+        "/home/leonardo/dev_ws/build/lidar_ie",
+        "/home/leonardo/dev_ws/install/lidar_ie/lib/python3.10/site-packages",
+        "/home/leonardo/dev_ws/build/laser_values",
+        "/home/leonardo/dev_ws/install/laser_values/lib/python3.10/site-packages",
+        "/home/leonardo/dev_ws/build/laser_pkg",
+        "/home/leonardo/dev_ws/install/laser_pkg/lib/python3.10/site-packages",
+        "/opt/ros/humble/lib/python3.10/site-packages",
+        "/opt/ros/humble/local/lib/python3.10/dist-packages"
+    ],
+    "python.analysis.extraPaths": [
+        "/home/leonardo/dev_ws/build/py_pubsub",
+        "/home/leonardo/dev_ws/install/py_pubsub/lib/python3.10/site-packages",
+        "/home/leonardo/dev_ws/build/my_nav",
+        "/home/leonardo/dev_ws/install/my_nav/lib/python3.10/site-packages",
+        "/home/leonardo/dev_ws/build/m2g",
+        "/home/leonardo/dev_ws/install/m2g/lib/python3.10/site-packages",
+        "/home/leonardo/dev_ws/build/lidar_info_pck",
+        "/home/leonardo/dev_ws/install/lidar_info_pck/lib/python3.10/site-packages",
+        "/home/leonardo/dev_ws/build/lidar_ie",
+        "/home/leonardo/dev_ws/install/lidar_ie/lib/python3.10/site-packages",
+        "/home/leonardo/dev_ws/build/laser_values",
+        "/home/leonardo/dev_ws/install/laser_values/lib/python3.10/site-packages",
+        "/home/leonardo/dev_ws/build/laser_pkg",
+        "/home/leonardo/dev_ws/install/laser_pkg/lib/python3.10/site-packages",
+        "/opt/ros/humble/lib/python3.10/site-packages",
+        "/opt/ros/humble/local/lib/python3.10/dist-packages"
+    ]
+}
