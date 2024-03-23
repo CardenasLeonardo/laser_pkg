@@ -29,13 +29,6 @@ class MoveRobotNode(Node):
         self.odom_subs= self.create_subscription(Odometry,'/odom',self.odom_callback,10)
         self.laser_subs= self.create_subscription(LaserScan,'/scan',self.laserscan_callback,10)
         
-        #SET VARIABLES EN CERO
-        
-        self.custom_origin = None
-        self.initialized = False
-        self.colision_detectada = False
-        self.coordenada1 = None
-
         self.k1 = 0.5
         self.k2 = 1
 
@@ -46,42 +39,42 @@ class MoveRobotNode(Node):
         self.theta = 0.0
         
         self.goal_pose = Pose2D()
+
         self.colision_pose = Pose2D()
         
         self.start_path = False
-        self.colision = False
 
-        self.bandera = False
-        #self.odom_subs
-
+        #dict obstaculo
+        self.obstacle =  dict(obstacle=False,orientation=None)
+        
         self.timer = self.create_timer(0.1, self.move2goal)
 
-        self.obstacle = {'obstacle':False,'orientation':None}
+        
         
     def laserscan_callback(self,msg):
 
         self.lidar_data = msg
         
-        umbral = 2.0
+        umbral = 1.0
 
-        obstacle_right = any(r < umbral for r in msg.ranges[90:180])
-        obstacle_left = any(r < umbral for r in msg.ranges[240:270])
+        obstacle_center = any(r < umbral for r in msg.ranges[135:225])
+        obstacle_right = any(r < umbral for r in msg.ranges[90:135])
+        obstacle_left = any(r < umbral for r in msg.ranges[225:270])
         
+        self.obstacle['obstacle'] = obstacle_center
         
-        #crear un filtro para saber si es por der. o izq.
-        if any(r < umbral for r in msg.ranges):
+        if obstacle_center:
 
-            self.obstacle['obstacle'] = True
+            self.get_logger().info('Obstaculo')
+            
             
             if obstacle_right:
-                self.obstacle['orientation'] = 'D'
+                self.obstacle['orientation'] = 'derecha'
                 self.get_logger().info('Derecha')
             if obstacle_left:
-                self.obstacle['orientation'] = 'I'
+                self.obstacle['orientation'] = 'izquierda'
                 self.get_logger().info('Izquierda')
         else:
-
-            self.obstacle['obstacle'] = False
             
             self.get_logger().info('TODO FINE')
         
@@ -126,14 +119,15 @@ class MoveRobotNode(Node):
 
             if self.obstacle['obstacle'] == True:
                 print(self.obstacle['orientation'])
-                #v = 0.0
-                #w = 0.0
+                v = 0.0
+                w = 0.0
+                self.mover(v,w)
             else:
                 print('OK')
                 
-            v,w = self.ley_control(self.pose.x,self.pose.y,self.theta)
+                v,w = self.ley_control(self.pose.x,self.pose.y,self.theta)
             
-            self.mover(v,w)
+                self.mover(v,w)
 
         else:
 
@@ -165,18 +159,18 @@ class MoveRobotNode(Node):
         v = self.k1 * a * cos(alpha)
 
         if v > 1:
-            v = 0.8
+            v = 1.0
 
         if v < -1:
-            v = -0.8
+            v = -1.0
         
         w = self.k2 * alpha + self.k1 * sin(alpha) * cos(alpha)
         
         if w > 1.0:
-            w = 0.8
+            w = 1.0
 
         if w < -1.0:
-            w = -0.8
+            w = -1.0
         
         print('goal pose: (',self.goal_pose.x ,' , ', self.goal_pose.y,')   robo pose: (',round(x,2),',', round(y,2),' ) ',' , ',theta,theta*180/math.pi,')')
 
