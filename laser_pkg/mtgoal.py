@@ -65,20 +65,15 @@ class MoveRobotNode(Node):
         
         if obstacle_center:
 
-            self.get_logger().info('Obstaculo')
-            
+            #self.get_logger().info('Obstaculo')
             
             if obstacle_right:
                 self.obstacle['orientation'] = 'derecha'
-                self.get_logger().info('Derecha')
+                #self.get_logger().info('Derecha')
             if obstacle_left:
                 self.obstacle['orientation'] = 'izquierda'
-                self.get_logger().info('Izquierda')
-        else:
-            
-            self.get_logger().info('TODO FINE')
-        
-        
+                #self.get_logger().info('Izquierda')
+                
     # FUNCION LLAMADA CADA QUE SE RECIBE MSG EN ODOM
     def odom_callback(self, msg_odom):
         
@@ -119,10 +114,13 @@ class MoveRobotNode(Node):
 
             if self.obstacle['obstacle'] == True:
                 print(self.obstacle['orientation'])
+                #TODO CREAR FUNCION BUG PASARLE X,Y y el sentido donde lo vi
                 v = 0.0
                 w = 0.0
                 self.mover(v,w)
+                
             else:
+                
                 print('OK')
                 
                 v,w = self.ley_control(self.pose.x,self.pose.y,self.theta)
