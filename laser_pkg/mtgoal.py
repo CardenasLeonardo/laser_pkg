@@ -60,8 +60,6 @@ class MoveRobotNode(Node):
         
     def laserscan_callback(self,msg):
 
-        #self.obstacle['obstacle'] = False
-        
         obstacle_right = any(r < self.umbral for r in msg.ranges[90:179])
         obstacle_left = any(r < self.umbral for r in msg.ranges[181:270])
 
