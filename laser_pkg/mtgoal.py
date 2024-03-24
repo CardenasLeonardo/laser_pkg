@@ -1,4 +1,4 @@
-    #---------------------------------------------LIBRERIAS ------------------------------------------------------#
+#---------------------------------------------LIBRERIAS ------------------------------------------------------#
 # No pongas notas con "---" tan largos
 from math import pow, atan2, sqrt, asin, cos, sin, atan
 from math import radians, degrees
@@ -12,16 +12,20 @@ from nav_msgs.msg import Odometry
 from std_msgs.msg import Float32, Int8
 import numpy as np
 
-#--------------------
+import os,sys
 
+"""
+Para bloques largos usa comillas 
 #El comentario general de que hace una clase va aqui
 #Esta clase toma como valores de entrada ciertos parametros .. y regresa tal dato -- algo asi
+"""
 class MoveRobotNode(Node):
     
     def __init__(self):
         
         # SE INICIALIZA EL NODO Y SE IMPRIME UN MENSAJE
         super().__init__('move_robot_node')
+        
         self.get_logger().info("Node move_robot_node Started")
         
         # GENERAR PUBLISHERS Y SUBSCRIBERS
@@ -44,36 +48,38 @@ class MoveRobotNode(Node):
         
         self.start_path = False
 
-        #dict obstaculo
         self.obstacle =  dict(obstacle=False,orientation=None)
+
+        self.umbral = 1.0
         
         self.timer = self.create_timer(0.1, self.move2goal)
 
-        
+        self.prev_ = 0
+
+        self.first_time = True
         
     def laserscan_callback(self,msg):
 
-        self.lidar_data = msg
+        #self.obstacle['obstacle'] = False
         
-        umbral = 1.0
+        obstacle_right = any(r < self.umbral for r in msg.ranges[90:179])
+        obstacle_left = any(r < self.umbral for r in msg.ranges[181:270])
 
-        obstacle_center = any(r < umbral for r in msg.ranges[135:225])
-        obstacle_right = any(r < umbral for r in msg.ranges[90:135])
-        obstacle_left = any(r < umbral for r in msg.ranges[225:270])
+        self.obstacle['min_right'] = min(msg.ranges[90:179])
+        self.obstacle['max_right'] = max(msg.ranges[90:179])
         
-        self.obstacle['obstacle'] = obstacle_center
+        self.obstacle['min_left'] = min(msg.ranges[181:270])
+        self.obstacle['max_left'] = max(msg.ranges[181:270])
         
-        if obstacle_center:
-
-            #self.get_logger().info('Obstaculo')
+        if obstacle_right:
+            self.obstacle['obstacle'] = True
+            self.obstacle['orientation'] = 'derecha'
+                                    
+        if obstacle_left:
             
-            if obstacle_right:
-                self.obstacle['orientation'] = 'derecha'
-                #self.get_logger().info('Derecha')
-            if obstacle_left:
-                self.obstacle['orientation'] = 'izquierda'
-                #self.get_logger().info('Izquierda')
-                
+            self.obstacle['obstacle'] = True
+            self.obstacle['orientation'] = 'izquierda'
+                        
     # FUNCION LLAMADA CADA QUE SE RECIBE MSG EN ODOM
     def odom_callback(self, msg_odom):
         
@@ -111,36 +117,103 @@ class MoveRobotNode(Node):
         distance_tolerance = 0.15
         
         if self.euclidean_distance(self.goal_pose) >= distance_tolerance:
-
+            
             if self.obstacle['obstacle'] == True:
-                print(self.obstacle['orientation'])
-                #TODO CREAR FUNCION BUG PASARLE X,Y y el sentido donde lo vi
-                v = 0.0
-                w = 0.0
-                self.mover(v,w)
+                
+                self.follow_b()
                 
             else:
-                
-                print('OK')
-                
-                v,w = self.ley_control(self.pose.x,self.pose.y,self.theta)
-            
-                self.mover(v,w)
+
+                self.ley_control(self.pose.x,self.pose.y,self.theta)
 
         else:
 
             self.stop_robot()
             self.start_path = False
 
-            answer = input("Quieres ingresar otro punto? y/n:   ")
-            
+            while True:
+                answer = input("Quieres ingresar otro punto? y/n:   ")
+                
+                if answer.lower() not in ('y', 'n'):
+                    print("Error fancy")
+                else:
+                    break
+                
             if answer == "y":
                 pass
             else:
-                #FIXME
-                rclpy.shutdown()
-                exit(-1)
+                sys.exit()
+                
 
+    def follow_b(self):
+        
+
+        if self.first_time:
+            self.colision_pose.x = self.pose.x
+            self.colision_pose.y = self.pose.y
+
+            self.first_time = False
+
+        # vel angular
+        # izq negativa
+        # der positiva
+            
+        v = 0.5
+        
+        lado = self.obstacle['orientation']
+
+        if lado == 'derecha':
+            error = -1 * ((self.obstacle['min_right'] -  self.umbral) * 2)
+        else:
+            error = (self.obstacle['min_left'] -  self.umbral) * 2
+                                
+        if error>1:
+            error=1.0
+            
+        if error<-1:
+            error=-1.0
+
+        w = error
+
+        self.get_logger().info(f'error - vel angular: {w}', throttle_duration_sec=1)
+        
+        self.mover(v,w)
+
+        #--------------------------------------------------------------------
+        # Calculo cambio de signo en calculos con vectores
+        #--------------------------------------------------------------------
+
+        n = []
+        
+     	#Calcular Vector XoXf
+        vx = self.goal_pose.x - self.colision_pose.x
+        vy = self.goal_pose.y - self.colision_pose.y
+        
+     	#rotar
+        n.append(-vy)
+        n.append(vx)
+        
+        #ODOM - X0
+        ODO_X0 = self.pose.x - self.colision_pose.x
+        ODO_Y0 = self.pose.y - self.colision_pose.y
+        
+        #MULTIPLICAR
+        calculos_signo = (ODO_X0*n[0]) + (ODO_Y0*n[1])
+        
+        #print(str(calculos_signo))
+        #no deberia cambiar
+        #print(str(self.colision_pose.x)+','+str(self.colision_pose.y))
+	
+        if((calculos_signo >= 0 and self.prev_ < 0) or (calculos_signo < 0 and self.prev_ >= 0)):
+            self.obstacle["obstacle"] = False
+            #self.first_time = True
+            self.get_logger().info("CAMBIO SIGNO")
+        
+        self.prev_ = calculos_signo
+        
+        #---------------------------------------------------------------------
+
+        
     # FUNCION PARA CALCULAR LEY DE CONTROL
     def ley_control(self,x,y,theta):
 
@@ -169,15 +242,13 @@ class MoveRobotNode(Node):
 
         if w < -1.0:
             w = -1.0
-        
-        print('goal pose: (',self.goal_pose.x ,' , ', self.goal_pose.y,')   robo pose: (',round(x,2),',', round(y,2),' ) ',' , ',theta,theta*180/math.pi,')')
 
-        return v,w
+        #publica cada 1seg
+        self.get_logger().info(f'goal pose: ({self.goal_pose.x} , {self.goal_pose.y}) - robo pose: ({round(x,2)},{round(y,2)}) - theta: {round(theta,2)} - {round(theta*180/math.pi,2)}', throttle_duration_sec=1)
 
+        #print('goal pose: (',self.goal_pose.x ,' , ', self.goal_pose.y,')   robo pose: (',round(x,2),',', round(y,2),' ) ',' , ',theta,theta*180/math.pi,')')
 
-    def follow_b(self):
-        
-        return v,w
+        self.mover(v,w)
 
     # FUNCION PARA MOVER EL ROBOT
     def mover(self,pot_l,pot_a): 
@@ -198,23 +269,40 @@ class MoveRobotNode(Node):
         msg.angular.y = 0.0
         msg.angular.z = 0.0
         self.cmd_vel_pub.publish(msg)
-        print("ROBOT DETENIDO")
+        self.get_logger().info("ROBOT DETENIDO")
         
 #------------ MAIN -----------#
 def main(args=None):
 
-    print('Coloca el robot en tu origen deseado')
-    respuesta = input("¿Estás listo para iniciar el programa? (s/n): ")
+    #limpiar pantalla
+    os.system('clear')
 
+    while True:
+        
+        print('Coloca el robot en tu origen deseado')
+        respuesta = input("¿Estás listo para iniciar el programa? (s/n): ")
+
+        if respuesta.lower() not in ('s', 'n'):
+            print("Error fancy")
+        else:
+            break
+        
+        
     if respuesta.lower() != 's':
         print("Programa no iniciado.")
     else:
+
         rclpy.init()
+
         move_rn = MoveRobotNode()
-        rclpy.spin(move_rn)
-        
-    rclpy.shutdown()
-    
+
+        #FIXME - Salir del programa ctrl + c
+        try:
+            rclpy.spin(move_rn)
+        except:
+            sys.exit()
+            
+            
 if __name__ == '__main__':
     main()
 #-----------------------------
