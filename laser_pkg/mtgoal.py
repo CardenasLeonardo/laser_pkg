@@ -50,7 +50,7 @@ class MoveRobotNode(Node):
 
         self.obstacle =  dict(obstacle=False,orientation=None)
 
-        self.umbral = 1.0
+        self.umbral = 1
         
         self.timer = self.create_timer(0.1, self.move2goal)
 
@@ -60,6 +60,8 @@ class MoveRobotNode(Node):
         
     def laserscan_callback(self,msg):
 
+        #Hacerlo en una funcion obstaculo
+                
         obstacle_right = any(r < self.umbral for r in msg.ranges[90:179])
         obstacle_left = any(r < self.umbral for r in msg.ranges[181:270])
 
@@ -68,16 +70,17 @@ class MoveRobotNode(Node):
         
         self.obstacle['min_left'] = min(msg.ranges[181:270])
         self.obstacle['max_left'] = max(msg.ranges[181:270])
-        
+
         if obstacle_right:
-            self.obstacle['obstacle'] = True
             self.obstacle['orientation'] = 'derecha'
-                                    
-        if obstacle_left:
+            self.obstacle['obstacle'] = True    
             
-            self.obstacle['obstacle'] = True
+        if obstacle_left:
             self.obstacle['orientation'] = 'izquierda'
-                        
+            self.obstacle['obstacle'] = True
+            
+            
+        
     # FUNCION LLAMADA CADA QUE SE RECIBE MSG EN ODOM
     def odom_callback(self, msg_odom):
         
@@ -103,6 +106,9 @@ class MoveRobotNode(Node):
         goal_pose = self.goal_pose
         
         if not self.start_path:
+
+            #parar robot
+            self.stop_robot()
             
             #Datos
             point_x,point_y = input("Ingrese las coordenadas x,y:: ").split(",")
@@ -204,7 +210,7 @@ class MoveRobotNode(Node):
 	
         if((calculos_signo >= 0 and self.prev_ < 0) or (calculos_signo < 0 and self.prev_ >= 0)):
             self.obstacle["obstacle"] = False
-            #self.first_time = True
+            self.first_time = True
             self.get_logger().info("CAMBIO SIGNO")
         
         self.prev_ = calculos_signo
@@ -221,6 +227,13 @@ class MoveRobotNode(Node):
     
         a = sqrt(x_err**2 + y_err**2)
 
+        if(theta > math.pi):
+            theta = theta - 2 * math.pi
+
+        if(theta < -math.pi):
+            theta = theta + 2 * math.pi
+            
+        
         # Error alpha
         alpha = atan2(y_err,x_err) - theta 
         
