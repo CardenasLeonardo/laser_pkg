@@ -37,6 +37,7 @@ class MoveRobotNode(Node):
         #---------------------------------- SET VARIABLES EN CERO -------------------------------------#
       
         self.custom_origin = None
+        self.custom_positon = None
         self.initialized = False
         self.colision_detectada = False
         self.coordenada1 = None
@@ -67,99 +68,49 @@ class MoveRobotNode(Node):
 
     #-------------------------------- FUNCION LLAMADA CADA QUE SE RECIBE MSG EN ODOM -------------------------------#
     def odom_callback(self, msg_odom):
-
         if not self.initialized:
-            #Set origen
-            self.custom_origin = None
-            self.select_origen(msg_odom)
-            self.custom_origin = position.x , position.y
-            self.initialized = True    
+            xo,yo,zo =(self.select_origen(msg_odom))
+            print(xo,yo,zo)
+            self.custom_origin = xo,yo,zo
+            self.initialized = True
+        else:
+            print ('origen:')
 
-        if self.custom_origin is not None:
-            
-            #Coordenadas actuales
-            x,y,orientation = self.coordenadas(msg_odom)
-            
-            #Coordenada incio de boundary follow 
-            if self.colision and not self.bandera:
-                self.colision_pose.x = x
-                self.colision_pose.y = y
-
-            #Calculo final de boundary follow
-            
-
-            v,w = self.ley_control(x,y,orientation)
-            self.mover(v,w)
-
-        """
-        #--------- Inicio y termino de comportamiento boundary follow -----------#
-        colision = self.colision
-        colision_pose = self.colision_pose
-        goal_pose = self.goal_pose
+        #Coordenadas actuales
+        #x,y,orientation = self.coordenadas(msg_odom)
+        
+        #Coordenada incio de boundary follow 
         
 
-        #Guardar coordenada de colision
-        if colision == True and self.estado == False:    
-            self.colision_pose.x = posx_custom
-            self.colision_pose.y = posy_custom
-            self.estado = True
-
-        #Calculo de fin de obstacle avoidance
-        vectorA = np.array([(posx_custom - colision_pose.x),(posy_custom - colision_pose.y) ])
-        vectorB = np.array([goal_pose.x - posx_custom , goal_pose.y - posy_custom] )
-        vectorR = np.array([goal_pose.x - colision_pose.x, goal_pose.y - colision_pose.y])
-        distanciaA = np.linalg.norm(vectorA)
-        distanciaB = np.linalg.norm(vectorB)
-        distanciaC = distanciaA+distanciaB
-        distanciaR = np.linalg.norm(vectorR)
-
-        print('goal pose: (',self.goal_pose.x ,' , ', self.goal_pose.y,')   robo pose: (',round(posx_custom,2),',', round(posy_custom,2),' ) ',' , ','colision_pose: (', colision_pose,')',theta,theta*180/math.pi,')')
-        print('distancia referencia:',distanciaR, '    distanciaA:',distanciaA, '    distanciaB:',distanciaB,  '    distanciaC:',distanciaC, )
-        
-        
-        
+        #Calculo final de boundary follow
         
 
-
-        if self.estado == False: 
-            self.orden(0)
-            self.mover(v,w)
-        else :
-            if distanciaC + 0.2 > distanciaR and distanciaC - 0.2 < distanciaR  :
-                self.orden(0)
-                self.mover(v,w)
-            else :
-                self.orden(1)
-        
-        """
+        #v,w = self.ley_control(x,y,orientation)
+        #self.mover(v,w)
+ 
     
 
     #----------------------------------- FUNCION PARA SETEAR ORIGEN  ------------------------------------#
     def select_origen(self,msg_odom):
-     
-        self.stop_robot()
-        position = msg_odom.pose.pose.position
-        orientation = msg_odom.pose.pose.orientation
-        print('Coloca el robot en tu origen deseado')
-        respuesta = input("¿Estás listo para iniciar el programa? (s/n): ")
-        if respuesta.lower() != 's':
-            print("Programa no iniciado.")
-
+    
+            position = msg_odom.pose.pose.position
+            orientation = msg_odom.pose.pose.orientation
+            x,y,z = position.x , position.y , position.z
+            return x,y,z
         
-        if not self.initialized:
-            self.custom_origin = (position.x , position.y)
-            self.initialized = True
-
-        if self.custom_origin is not None:
-            (x_origin, y_origin) = self.custom_origin
-            (posx_custom, posy_custom) = (position.x - x_origin, position.y - y_origin)
-        return posx_custom, posy_custom,orientation
+            
+       
     
         
 
        
     #------------------------------ FUNCION PARA GENERAR COORDENADAS  ------------------------------------#
     def coordenadas(self,msg_odom):
+        position = msg_odom.pose.pose.position
+        orientation = msg_odom.pose.pose.orientation
+        x,y,z = position.x , position.y , position.z
+        return x,y,z
+
         
 
     #-------------------------------- FUNCION PARA CALCULAR LEY DE CONTROL -------------------------------#
@@ -186,38 +137,7 @@ class MoveRobotNode(Node):
         w = self.k2 * alpha + self.k1 * sin(alpha) * cos(alpha)
         print('goal pose: (',self.goal_pose.x ,' , ', self.goal_pose.y,')   robo pose: (',round(x,2),',', round(y,2),' ) ',' , ',theta,theta*180/math.pi,')')
         return v,w
-    '''
-    #--------------------------------------  FUNCION BANDERA RODEAR OBSTACULO ---------------------------------------#
-    def bandera(self,msg_odom):
-
-        position = msg_odom.pose.pose.position
-        (posx, posy, posz) = (position.x, position.y, position.z)
-
-         #--------- Inicio y termino de comportamiento boundary follow -----------#
-        colision = self.colision
-        colision_pose = self.colision_pose
-        goal_pose = self.goal_pose
-        
-
-        #Guardar coordenada de colision
-        if colision == True and self.estado == False:    
-            self.colision_pose.x = posx_custom
-            self.colision_pose.y = posy_custom
-            self.estado = True
-
-        #Calculo de fin de obstacle avoidance
-        vectorA = np.array([(posx_custom - colision_pose.x),(posy_custom - colision_pose.y) ])
-        vectorB = np.array([goal_pose.x - posx_custom , goal_pose.y - posy_custom] )
-        vectorR = np.array([goal_pose.x - colision_pose.x, goal_pose.y - colision_pose.y])
-        distanciaA = np.linalg.norm(vectorA)
-        distanciaB = np.linalg.norm(vectorB)
-        distanciaC = distanciaA+distanciaB
-        distanciaR = np.linalg.norm(vectorR)
-
-        print('goal pose: (',self.goal_pose.x ,' , ', self.goal_pose.y,')   robo pose: (',round(posx_custom,2),',', round(posy_custom,2),' ) ',' , ','colision_pose: (', colision_pose,')',theta,theta*180/math.pi,')')
-        print('distancia referencia:',distanciaR, '    distanciaA:',distanciaA, '    distanciaB:',distanciaB,  '    distanciaC:',distanciaC, )
-        
-        '''
+   
 
     #------------------------------------------ FUNCION PARA ENVIAR ORDEN -------------------------------------------#
     def orden(self,a):
@@ -256,7 +176,8 @@ class MoveRobotNode(Node):
 #------------ MAIN -----------#
 def main(args=None):
     rclpy.init()
-    move_rn = MoveRobotNode()               
+    move_rn = MoveRobotNode()  
+
     rclpy.spin(move_rn)
     rclpy.shutdown()
 if __name__ == '__main__':
