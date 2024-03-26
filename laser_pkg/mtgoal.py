@@ -33,6 +33,13 @@ class MoveRobotNode(Node):
         self.odom_subs= self.create_subscription(Odometry,'/odom',self.odom_callback,10)
         self.laser_subs= self.create_subscription(LaserScan,'/scan',self.laserscan_callback,10)
         
+        self.obstacle = False
+        self.obstacle_right = False
+        self.obstacle_left = False
+        self.side = None
+
+        self.flagside = False
+        self.rango = None
 
         self.k1 = 0.5
         self.k2 = 1
@@ -49,11 +56,11 @@ class MoveRobotNode(Node):
         
         self.start_path = False
 
-        self.obstacle =  dict(obstacle=False,orientation=None)
+        #self.obstacle =  dict(obstacle=False,orientation=None)
 
         self.umbral = 1.5
         
-        self.timer = self.create_timer(0.1, self.move2goal)
+        #self.timer = self.create_timer(0.1, self.boundary_follow)
 
         self.prev_ = 0
 
@@ -61,24 +68,75 @@ class MoveRobotNode(Node):
         
     def laserscan_callback(self,msg):
 
-        #Hacerlo en una funcion obstaculo
-                
-        obstacle_right = any(r < self.umbral for r in msg.ranges[90:179])
-        obstacle_left = any(r < self.umbral for r in msg.ranges[181:270])
+        #Hacerlo en una funcion obstaculo    
+        self.rango = msg.ranges
 
-        self.obstacle['min_right'] = min(msg.ranges[90:179])
-        self.obstacle['max_right'] = max(msg.ranges[90:179])
-        
-        self.obstacle['min_left'] = min(msg.ranges[181:270])
-        self.obstacle['max_left'] = max(msg.ranges[181:270])
+        self.obstacle = any(r < self.umbral for r in msg.ranges[90:270])
+        self.obstacle_right = any(r < self.umbral for r in msg.ranges[90:179])
+        self.obstacle_left = any(r < self.umbral for r in msg.ranges[181:270])
+        self.boundary_follow()
 
-        if obstacle_right:
-            self.obstacle['orientation'] = 'derecha'
-            self.obstacle['obstacle'] = True    
+
+    def boundary_follow(self):
+        #bandera para seleccionar direccion de giro
+        if not self.flagside :
+            if self.obstacle_right:
+                self.side = 'rigth'
+                print(self.side)
+                self.flagside = True
+            if self.obstacle_left:
+                self.side = 'left'
+                print(self.side)
+            self.flagside = True    
+
+        rango = self.rango
+        umbral = 0.6
             
-        if obstacle_left:
-            self.obstacle['orientation'] = 'izquierda'
-            self.obstacle['obstacle'] = True
+        if self.side == 'rigth':
+            #rango por derecha y frente 90 - 180
+            a = 60
+            b = 200
+            #rango por derecha 90
+            c = 70
+            d = 110
+            #Posicion de lado
+            e = 90
+            f = 1.0
+            g = -1.0
+
+        if self.side == 'left':
+            #rango por izquierda y frente 240 - 160
+            a = 160
+            b = 290
+            #rango por izquierda 270
+            c = 250
+            d = 290
+            #Posicion de lado
+            e = 270
+            f = 1.0
+            g = 1.0
+        
+        minm = min(rango[a:b])              #Medicion menor del Rango de monitoreo
+        min_index = rango.index(minm)       #Angulo de la menor medicion
+        err = (min (rango[c:d])) - umbral   #error a
+        erra = (min_index - e)/10           #error alpha
+    
+        if err>1:
+            err=1.0
+
+        if err<-1:
+            err=-1.0
+        v = 0.4
+        w = erra*f + err*6*g
+
+        print(' a:', round(err,2), '    /   alpha:', erra, '    /   mode:', mode, '     /    orden:')
+        self.mover(0.4 , erra*f + err*6*g)
+        
+       
+    
+        
+
+        
             
             
         
