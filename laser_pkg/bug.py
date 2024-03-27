@@ -10,7 +10,7 @@ from sensor_msgs.msg import LaserScan
 from nav_msgs.msg import Odometry
 from std_msgs.msg import Float32, Int8
 import os,sys
-
+import numpy as np
 class MoveRobotNode(Node):
     
     
@@ -25,11 +25,13 @@ class MoveRobotNode(Node):
 
         self.bandera = False
         self.rango = None
-        self.timer = self.create_timer(0.1, self.prueba)
+        self.timer = self.create_timer(0.05, self.prueba)
+     
         self.v = 0.0
         self.w = 0.0
         self.mode = 0
-        self.umbral = 2.0
+        
+        self.obstacle3 = False
         self.obstacle2 = False
         self.obstacle_right = False
         self.obstacle_left = False
@@ -44,25 +46,33 @@ class MoveRobotNode(Node):
         self.goal_pose = Pose2D()
 
         self.colision_pose = Pose2D()
+        self.colision_pose.x = 0.0
+        self.colision_pose.y = 0.0
         
         self.start_path = False
 
         self.obstacle =  dict(obstacle=False,orientation=None)
 
-        self.umbral = 1.5
-        
-        #self.timer = self.create_timer(0.1, self.boundary_follow)
+        self.umbral = 1.0
+        self.umbral2 = 1.6
 
         self.prev_ = 0
 
         self.first_time = True
-
+        
+        self.colision = False
+        self.flag_colision = False
+        self.flag_colision2 = False
+        self.rodeado = False
+        self.done = False
+        self.redzone = False
     #FUNCION LLAMADA CADA QUE SE RECIBE MSG EN LASER 
     
     def laserscan_callback(self,msg):
 
         self.rango = msg.ranges
         self.obstacle2 = any(r < self.umbral for r in msg.ranges[90:270])
+        self.obstacle3 = any(r < self.umbral2 for r in msg.ranges[90:270])
         self.obstacle_right = any(r < self.umbral for r in msg.ranges[90:179])
         self.obstacle_left = any(r < self.umbral for r in msg.ranges[181:270])
         
@@ -71,13 +81,13 @@ class MoveRobotNode(Node):
         
         if not self.bandera:
             if self.obstacle_right:
-                self.mode = 2
-                self.bandera = True
-            if self.obstacle_left:
                 self.mode = 1
                 self.bandera = True
+            if self.obstacle_left:
+                self.mode = 2
+                self.bandera = True
         
-        umbral = 0.6
+        umbral = self.umbral
         rango = self.rango
         if self.mode == 1:
             #rango por derecha y frente 90 - 180
@@ -117,6 +127,7 @@ class MoveRobotNode(Node):
 
             self.v = 0.4
             self.w = erra*f + err*6*g
+            self.mover(self.v , self.w)
 
 
     # FUNCION LLAMADA CADA QUE SE RECIBE MSG EN ODOM
@@ -172,7 +183,7 @@ class MoveRobotNode(Node):
             w = -1.0
 
         #publica cada 1seg
-        self.get_logger().info(f'goal pose: ({self.goal_pose.x} , {self.goal_pose.y}) - robo pose: ({round(x,2)},{round(y,2)}) - theta: {round(theta,2)} - {round(theta*180/math.pi,2)}', throttle_duration_sec=0.5)
+        #self.get_logger().info(f'goal pose: ({self.goal_pose.x} , {self.goal_pose.y}) - robo pose: ({round(x,2)},{round(y,2)}) - theta: {round(theta,2)} - {round(theta*180/math.pi,2)}', throttle_duration_sec=0.5)
 
         #print('goal pose: (',self.goal_pose.x ,' , ', self.goal_pose.y,')   robo pose: (',round(x,2),',', round(y,2),' ) ',' , ',theta,theta*180/math.pi,')')
 
@@ -188,28 +199,25 @@ class MoveRobotNode(Node):
             #parar robot
             self.stop_robot()
             
+
             #Datos
             point_x,point_y = input("Ingrese las coordenadas x,y:: ").split(",")
             
             self.goal_pose.x = float(point_x)
             self.goal_pose.y = float(point_y)
+            self.colision_pose.x = 0.0
+            self.colision_pose.y = 0.0
+            self.flag_colision = False
+            self.first_time = True
 
             self.start_path = True
         
         distance_tolerance = 0.15
         
         if self.euclidean_distance(self.goal_pose) >= distance_tolerance:
-            
-            if self.obstacle['obstacle'] == True:
-                
-                self.follow_b()
-                
-            else:
-
-                self.ley_control(self.pose.x,self.pose.y,self.theta)
+            self.ley_control(self.pose.x,self.pose.y,self.theta)
 
         else:
-
             self.stop_robot()
             self.start_path = False
 
@@ -226,18 +234,121 @@ class MoveRobotNode(Node):
             else:
                 sys.exit()
 
+    def alineado(self):
+        x1, y1 = self.colision_pose.x, self.colision_pose.y  # Coordenadas del punto A
+        x2, y2 = self.pose.x, self.pose.y  # Coordenadas del punto B
+        x3, y3  = self.goal_pose.x, self.goal_pose.y  # Coordenadas del punto C
+        area = 0.5 * abs(x1*y2 + x2*y3 + x3*y1 - y1*x2 - y2*x3 - y3*x1)
+        print(area)
+        if area <= 0.1 and area >= - 0.1:
+            self.rodeado = True
+            print('alineado')
+        else:   
+            self.rodeado = False
+            print('no alineado')
+
+    def cambiodesigno(self):
+        #--------------------------------------------------------------------
+        # Calculo cambio de signo en calculos con vectores
+        #--------------------------------------------------------------------
+        n = []
+     	#Calcular Vector XoXf
+        vx = self.goal_pose.x - self.colision_pose.x
+        vy = self.goal_pose.y - self.colision_pose.y
+        
+     	#rotar
+        n.append(-vy)
+        n.append(vx)
+        
+        #ODOM - X0
+        ODO_X0 = self.pose.x - self.colision_pose.x
+        ODO_Y0 = self.pose.y - self.colision_pose.y
+        
+        #MULTIPLICAR
+        calculos_signo = (ODO_X0*n[0]) + (ODO_Y0*n[1])
+        
+        #print(str(calculos_signo))
+        #no deberia cambiar
+        #print(str(self.colision_pose.x)+','+str(self.colision_pose.y))
+	
+        if((calculos_signo >= 0 and self.prev_ < 0) or (calculos_signo < 0 and self.prev_ >= 0)):
+            self.first_time = True
+            self.get_logger().info("CAMBIO SIGNO")
+        
+        self.prev_ = calculos_signo
+        
+        #---------------------------------------------------------------------
+
+    def transicion(self):
+        self.stop_robot()
+        rango = self.rango
+        umbral = self.umbral 
+        minm = min(rango)
+        min_index = rango.index(minm)
+        err = (min (rango)) - umbral #error d
+        erra = (min_index -1)/100
+     
+        if err>1:
+            err=1.0
+
+        if err<-1:
+            err=-1.0
+
+        print('error',err)
+        print('error a',erra)
+        
+        if erra <= 0.03: self.mover(0.4 , 0.0)
+        else: self.mover(0.0 , erra )
+
 
     def prueba (self):
-        self.move2goal()
-        
-        """       
-        if self.obstacle:   
-            self.boundary_follow()
-            self.mover(self.v , self.w)
-        else:
-            self.mover(0.8 , 0.0)
-        """
+        self.alineado()
+        if self.first_time and self.obstacle2:
+            self.colision_pose.x = self.pose.x
+            self.colision_pose.y = self.pose.y
+            self.first_time = False
+        #region de colision (distancia entre pose y colision)
+        separacion =  math.sqrt((self.pose.x - self.colision_pose.x)**2 + (self.pose.y - self.colision_pose.y)**2 ) 
+        if separacion < 0.5: self.redzone = True
+        if separacion > 0.9: self.redzone = False
 
+        print('colision:',self.colision_pose,'separacion:',separacion,'redzone:',self.redzone)
+    
+        if self.obstacle2 : print('colision')
+        else: print('no colision')
+
+        if self.obstacle3 : print('No libre')
+        else: print('libre')    
+            
+        if not self.flag_colision and self.obstacle2: 
+            self.flag_colision = True
+        if self.flag_colision: 
+            print('flag')
+
+        
+        if self.flag_colision:
+            if self.redzone or not self.rodeado : self.boundary_follow()
+            if not self.redzone:
+                if self.rodeado: 
+                    self.transicion()
+                    if not self.obstacle3 : self.flag_colision = False
+        else: self.move2goal()
+
+            
+
+
+    '''    
+        if not self.flag_colision:
+            self.move2goal()
+            if self.obstacle2: self.flag_colision = True
+
+        if self.flag_colision:
+            self.boundary_follow()
+            if self.rodeado: self.flag_colision = False
+    '''
+        
+        
+    
 
     #----------------------------------------- FUNCION PARA MOVER EL ROBOT -----------------------------------------#
     def mover (self,pot_l,pot_a): 
