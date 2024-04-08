@@ -160,13 +160,14 @@ class MoveRobotNode(Node):
         y_err = self.goal_pose.y - y
         a = sqrt(x_err**2 + y_err**2)
 
-        if(theta > math.pi):
-            theta = theta - 2 * math.pi
-        if(theta < -math.pi):
-            theta = theta + 2 * math.pi
-            
+      
         # Error alpha
         alpha = atan2(y_err,x_err) - theta 
+
+        if(alpha > math.pi):
+            alpha = alpha - 2 * math.pi
+        if(alpha < -math.pi):
+            alpha = alpha + 2 * math.pi
         
         # Ley de control
         v = self.k1 * a * cos(alpha)
